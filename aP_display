@@ -1,0 +1,214 @@
+#!/bin/sh
+version="Time-stamp: <2013-07-10 15:51:24 kip>"
+#
+# Copyright  2013 by Garcia-Diaz Lab, Stony Brook University
+#
+#           All rights reserved.
+#
+#           This software is proprietary to and embodies the confidential
+#           technology of the Garcia-Diaz Lab (MGD Lab). Possession, use,
+#           duplication or dissemination of the software is authorised
+#           only pursuant to a valid written licence from MGD Lab.
+#
+# Author: (2013) Kip E. Guja
+#
+# Contact  kip.guja@stonybrook.edu
+#
+#----------------------------------------------------------------------
+#              BEGIN OF USER INPUT
+#----------------------------------------------------------------------
+
+#----------------------------------------------------------------------
+#               END OF USER INPUT
+#----------------------------------------------------------------------
+echo " " >&2
+echo " ============================================================================ " >&2
+echo " " >&2
+echo " Copyright (C) 2013 by Garcia-Diaz Lab, Stony Brook University" >&2
+echo " " >&2
+echo "           All rights reserved." >&2
+echo " " >&2
+echo "           This software is proprietary to and embodies the confidential" >&2
+echo "           technology of the Garcia-Diaz Lab (MGD Lab). Possession, use," >&2
+echo "           duplication or dissemination of the software is authorised" >&2
+echo "           only pursuant to a valid written licence from MGD Lab." >&2
+echo " " >&2
+echo " ---------------------------------------------------------------------------- " >&2
+echo " " >&2
+echo " Author:   (2013) Kip E. Guja" >&2
+echo " " >&2
+echo " Contact:  kip.guja@stonybrook.edu" >&2
+echo " " >&2
+ShortVersion=`echo $version | cut -f2- -d':'`
+echo " Version:  `basename $0`   version ${ShortVersion} " >&2
+echo " " >&2
+echo " ============================================================================ " >&2
+echo " " >&2
+#----------------------------------------------------------------------
+#               BEGIN OF SCRIPT
+#----------------------------------------------------------------------
+
+error () {
+  echo " "
+  echo " ERROR: $@"
+  echo " "
+  exit 1
+}
+usage () {
+  echo " "
+  echo "This script displays output from autoPROC/Pointless/Aimless/Truncate/XDS-STAT."
+  echo "Default behavior is to display the most important plots only."
+  echo " "
+  echo "Note: this script MUST be run in the directory containing autoPROC output files!"
+  echo " "
+  echo "Usage: aP_display [options]"
+  echo " "
+  echo "Program options:"
+  echo "     -d or --default  : default, show most important autoPROC plots"
+  echo "     -a or --all      : show all autoPROC plots"
+  echo "     -b or --beta     : similar to default, but for beta autoPROC builds"
+  echo "     -x or --xds      : run XDSSTAT and show output plots / pck images"
+  echo "     -s or --scales   : interactive scalefactors plot"
+  echo "     -m or --mtz      : show reciprocal lattice and output mtz file" 
+  echo "     -f or --frames   : show XDS frame output"
+  echo "     -p or --predict  : show predictions with mosflm (click predict)"
+  echo " " 
+}
+
+#check for required programs
+#type process >/dev/null 2>&1
+#[ $? -ne 0 ] && error "autoPROC not setup correctly? Can't find 'process' binary."
+type display >/dev/null 2>&1
+[ $? -ne 0 ] && error "ImageMagick not setup correctly? Can't find 'display' binary."
+type loggraph >/dev/null 2>&1
+[ $? -ne 0 ] && error "CCP4 not setup correctly? Can't find 'loggraph' binary."
+type xdsstat >/dev/null 2>&1
+[ $? -ne 0 ] && error "XDS-STAT not setup correctly? Can't find 'xdsstat' binary."
+type xds-viewer-0.6 >/dev/null 2>&1
+[ $? -ne 0 ] && error "XDS-Viewer not setup correctly? Can't find 'xds-viewer-0.6' binary."
+type adxv >/dev/null 2>&1
+[ $? -ne 0 ] && error "Adxv not setup correctly? Can't find 'adxv' binary."
+type ipmosflm >/dev/null 2>&1
+[ $? -ne 0 ] && error "Mosflm not setup correctly? Can't find 'ipmosflm' binary."
+
+#show_plots=0
+#case $1 in
+#  -s*)   show_plots=1;shift;;
+#  -nos*) show_plots=0;shift;;
+#  -h) usage;exit 0;;
+#esac
+#
+[ $# -eq 0 ] && usage && error "no input parameter(s) given"
+[ $1 = "-h" ] || [ $1 = "--help" ] && usage && exit 0
+#
+#if [ $show_plots -eq 0 ]; then
+#  echo "# unsorted list of: file, Epoch, Date, seconds-to-previous"
+#  imginfo -v $@ | awk '{i=split($0,a,"=")}/ File = /{f=$NF}/ date /{d=a[2]}/ Epoch /{print f,$NF,d}'  | awk '{
+#    n++;d=0
+#    if(n>1){
+#      d=$2-iold
+#    }
+#    iold=$2
+#    print $0,d
+#  }'
+#else
+#  echo "# sorted list of: file, Epoch, Date, seconds-to-previous"
+#  imginfo -v $@ | awk '{i=split($0,a,"=")}/ File = /{f=$NF}/ date /{d=a[2]}/ Epoch /{print f,$NF,d}' | sort -n -k2 | awk '{
+#    n++;d=0
+#    if(n>1){
+#      d=$2-iold
+#    }
+#    iold=$2
+#    print $0,d
+#  }'
+#fi
+
+#default, show only most important autoproc plots and ccp4 log plots
+if [ $1 = "--default" ] || [ $1 = "-d" ]; then
+echo " "
+echo "Processing... please wait..."
+echo "XDS_ASCII.HKL " | xdsstat >xdsstat.log 2> temp.txt & sleep 1  
+wait
+echo " "
+echo "Done."
+echo " "
+[ -f scale.png ] && display scale.png divergence.png mosaicity.png standard_deviation.png detector_center_origin.png distance.png cell_axes_devmean.png SPOT.noHKL.png & [ -f pointless.log ] && loggraph pointless.log & [ -f aimless.log ] && loggraph aimless.log & [ -f truncate.log ] && loggraph truncate.log & [ -f XDSSTAT.LP ] && loggraph xdsstat.log & [ -f FRAME.cbf ] && xds-viewer-0.6 FRAME.cbf >/dev/null 2>&1 & [ -f temp.txt ] && rm temp.txt
+fi
+
+#beta, show only most important autoproc plots and ccp4 log plots from beta autoproc
+if [ $1 = "--beta" ] || [ $1 = "-b" ]; then
+echo " "
+echo "Processing... please wait..."
+echo "XDS_ASCII.HKL " | xdsstat >xdsstat.log 2> temp.txt & sleep 1
+wait
+echo " "
+echo "Done."
+echo " "
+[ -f scale.png ] && display 0_ana_aimless_Bscale.png 0_ana_aimless_Rmerge.png standard_deviation.png run_idxref_spot_hkl_hist.png mosaicity.png correct_rmerge.png angle_orientation.png SPOT.noHKL.png detector_center_origin.png correct_nrej.png run_idxref_spot_hkl_histfrc.png correct_isigi.png cell_axes.png distance.png divergence.png spots_all_histfrc.png correct_chi2.png angle_orientation0.png spots_unk_histfrc.png divergence-mosaicity.png cell_axes_devmean.png spots_hkl_histfrc.png SPOT.all.png scale.png misfits.png & [ -f pointless.log ] && logview pointless.log & [ -f aimless.log ] && logview aimless.log & [ -f truncate.log ] && logview truncate.log & [ -f XDSSTAT.LP ] && logview xdsstat.log & [ -f FRAME.cbf ] && xds-viewer-0.6 FRAME.cbf >/dev/null 2>&1 & [ -f temp.txt ] && rm temp.txt
+fi
+
+#show all autoproc plots and ccp4 log plots
+if [ $1 = "--all" ] || [ $1 = "-a" ]; then
+echo " "
+echo "Processing... please wait..."
+echo "XDS_ASCII.HKL " | xdsstat >XDSSTAT.LP 2> temp.txt & sleep 1
+wait
+echo " "
+echo "Done."
+echo " "
+if [ -f scale.png ]; then 
+png_files=`ls *.png`
+display $png_files & [ -f pointless.log ] && loggraph pointless.log & [ -f aimless.log ] && loggraph aimless.log & [ -f truncate.log ] && loggraph truncate.log & [ -f XDSSTAT.LP ] && loggraph XDSSTAT.LP & [ -f temp.txt ] && rm temp.txt
+fi
+fi
+
+#run xdsstat, then show output plot and pck images
+if [ $1 = "--xds" ] || [ $1 = "-x" ]; then
+echo "XDS_ASCII.HKL " | xdsstat > XDSSTAT.LP & sleep 1  
+wait
+#[ -f XDSSTAT.LP ] && loggraph XDSSTAT.LP 
+loggraph XDSSTAT.LP & xds-viewer-0.6 misfits.pck & xds-viewer-0.6 rf.pck & xds-viewer-0.6 scales.pck
+fi
+#set xdsstat_file = `ls *.LP | grep -c "XDSSTAT"`
+#if [ $xdsstat_file -eq 1 ]; then 
+#loggraph XDSSTAT.LP & adxv misfits.pck rf.pck anom.pck scales.pck
+#else
+#echo "XDSSTAT error"
+#fi 
+ 
+
+#display interactive scalefactors plot with gnuplot
+if [ $1 = "--scales" ] || [ $1 = "-s" ]; then
+egrep ' .....   0 ...... ........   ..  .....    ....   ...  ......  ......' INTEGRATE.LP > frames.scales
+gnuplot << EOF
+set grid
+plot "frames.scales" using 1:3
+pause mouse keypress
+EOF
+fi
+
+#display reciprocal lattice and view output mtz file
+if [ $1 = "--mtz" ] || [ $1 = "-m" ]; then
+viewhkl truncate-unique.mtz
+fi
+
+#display all XDS frame output
+#  frames=`ls *.cbf` 
+# frames="FRAME.cbf ABS.cbf BKPIX.cbf"
+if [ $1 = "--frames" ] || [ $1 = "-f" ]; then
+#  for frame in ${frames}
+#  do
+#  /usr/local/crystal/adxv ${frame} & 
+xds-viewer-0.6 FRAME.cbf & xds-viewer-0.6 ABS.cbf & xds-viewer-0.6 BKGPIX.cbf & sleep 3 & /usr/local/crystal/adxv FRAME.cbf
+#  done
+fi
+
+#display predictions with mosflm
+if [ $1 = "--predict" ] || [ $1 = "-p" ]; then
+ipmosflm < view.dat 
+fi
+
+exit 0
+#----------------------------------------------------------------------
+#               END OF SCRIPT
+#----------------------------------------------------------------------
